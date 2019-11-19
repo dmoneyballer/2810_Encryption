@@ -1,0 +1,234 @@
+;; Program: Encrypter/Decrypter
+;; Authors: Christian Caldwell / ... / ... / ...
+;; Date: 11/16/2019
+;;
+;; This Program produces a menu that prompts the user to choose one of three Encryption Options.
+;; When an option is selected, the user is prompted to give a string terminating with a newline character.
+;; This string is then encyrpted, printed, and stored in memory. The user can then select decrypt from menu,
+;; converting the previously encrypted code within memory, reversing what ever encryption method that was
+;; last used. Selecting quit in the main menu will terminate the program.
+;;
+;; REGISTER DESIGNATIONS:
+;; --- MENULOOP
+;;	- R0 INPUT/OUTPUT. Holds result of offset add. Decremented throughout menuloop to determine user input
+;;	- R1 CONSTANT. Contains ascii offset value for speed and simplicity.
+;;	- R2 STATE FLAG. Denotes the previous operation. Set by encryption subroutines. Read by decryption subroutine.
+;;		0 = piglatin / -1 = playfair / 1 = caeser / -16 = none  
+
+
+;; Initialize Program
+.ORIG x3000
+AND R0, R0, #0		;Clear R0
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-16	;Set R1 to ascii offset value (-48)
+ADD R1, R1, #-16	;Immediate Value Capped at -16
+ADD R1, R1, #-16	;so this value needs to be added thrice
+AND R2, R2, #0		;Clear R2
+ADD R2, R2, #-16	;Set R2 to 'invalid' flag
+
+MENULOOP
+(Print Newline x3)
+;;Print STRING: MENUSTRING1
+LEA RO, MENUSTRING1
+PUTS MENUSTRING1
+
+;;Print String: MENUSTRING2
+LEA RO, MENUSTRING2
+PUTS MENUSTRING2
+
+;;Print String: MENUSTRING1
+LEA RO, MENUSTRING1
+PUTS MENUSTRING1
+
+;;Print String: MENUSTRING3
+LEA RO, MENUSTRING1
+PUTS MENUSTRING1
+
+;;Print String: OPTIONSTRING1
+LEA RO, OPTIONSTRING1
+PUTS OPTIONSTRING1
+
+;;Print String: MENUSTRING4
+LEA RO, MENUSTRING4
+PUTS MENUSTRING4
+
+;;Print String: OPTIONSTRING2
+LEA RO, OPTIONSTRING2
+PUTS OPTIONSTRING2
+
+;;Print String: MENUSTRING5
+LEA RO, MENUSTRING5
+PUTS MENUSTRING5
+
+;;Print String: OPTIONSTRING3
+LEA RO, OPTIONSTRING3
+PUTS OPTIONSTRING3
+
+;;Print String: MENUSTRING6
+LEA RO, MENUSTRING6
+PUTS MENUSTRING6
+
+;;Print String: OPTIONSTRING4
+LEA RO, OPTIONSTRING4
+PUTS OPTIONSTRING4
+
+;;Print String: MENUSTRING7
+LEA RO, MENUSTRING7
+PUTS MENUSTRING7
+
+;;Print String: OPTIONSTRING5
+LEA RO, OPTIONSTRING5
+PUTS OPTIONSTRING5
+
+IN
+ADD R0, R0, R1		;Add the ascii offset to the input char value
+ADD R0, R0, #-1		;subtract 1 to skip that '0' char
+BRz PIGLATINSTART	;if the offseted value is zero, then the input was 49, the value of '1'
+ADD R0, R0, #-1		;subtract 1 to decrement and check of input of 50
+BRz PLAYFAIRSTART	;if R0 is zero, input was 50, the value of '2'
+ADD R0, R0, #-1		;subtract 1 to decrement and check of input of 51
+BRz CAESERSTART	;if R0 is zero, input was 51, the value of '3'
+ADD R0, R0, #-1		;subtract 1 to decrement and check of input of 52
+BRz DECRYPTSTART	;if R0 is zero, input was 52, the value of '4'
+ADD R0, R0, #-1		;subtract 1 to decrement and check of input of 53
+BRz QUIT			;if R0 is zero, input was 53, the value of '5'
+BR MENUBADINPUT		;if no branches were taken, we know that input was not 1-5 and thus is invalid
+
+
+
+PIGLATINSTART
+AND R2, R2, #0		;Clear R2 / Also the value of flag, no ADD needed
+PUTS OPTIONSELECTED
+PUTS OPTIONSTRING
+(Print String: OPTIONSTRING1)
+(String Input Subroutine)
+(String Encryption Algorithm)
+BR MENULOOP
+
+
+
+PLAYFAIRSTART
+AND R2, R2, #0		;Clear R2
+ADD R2, R2, #-1		;Set R2 Flag
+(Print String: OPTIONSELECTED)
+(Print String: OPTIONSTRING2)
+(String Input Subroutine)
+(String Encryption Algorithm)
+BR MENULOOP
+
+
+
+CAESERSTART
+AND R2, R2, #0		;Clear R2
+ADD R2, R2, #1		;Set R2 Flag
+(Print String: OPTIONSELECTED)
+(Print String: OPTIONSTRING3)
+(String Input Subroutine)
+(String Encryption Algorithm)
+BR MENULOOP
+
+
+
+DECRYPTSTART
+(Print String: OPTIONSELECTED)
+(Print String: OPTIONSTRING4)
+ADD R2, R2, #0		;Sets condition flags to the value of R2 (not counting negative flag)
+BRz DECRYPTPIG
+BRp DECRYPTCAESER
+ADD R2, R2, #1		;Negative flag previously set by both playfair state (-1) and none state (-16), increment to differentiate
+BRz DECRYPTPLAY		;Will only branch if flag was -1 before the previous add
+BR DECRYPTNONE		;If no message has been previously encrypted, selecting this option would result in an error. This branch protects against this event.
+
+
+
+DECRYPTPIG
+(Piglatin Decryption Algorithm)
+AND R2, R2, #0
+ADD R2, R2, #-16	;Once the input string has been decrypted, prevent decryption from occuring again until new encrypted string exists
+BR MENULOOP
+
+
+
+DECRYPTPLAY
+(Playfair Decryption Algorithm)
+AND R2, R2, #0
+ADD R2, R2, #-16		;Once the input string has been decrypted, prevent decryption from occuring again until new encrypted string exists
+BR MENULOOP
+
+
+
+DECRYPTCAESER
+(Caeser Decryption Algorithm)
+AND R2, R2, #0
+ADD R2, R2, #-16		;Once the input string has been decrypted, prevent decryption from occuring again until new encrypted string exists
+BR MENULOOP
+
+
+
+DECRYPTNONE
+(Print String: NOENCRYPTEDSTRING)
+BR MENULOOP
+
+PRINT_STRING
+;; Setup
+ LEA R1 LOAD_STRING_ADDRESS	; Load the address of the string into R1
+ LEA R2, PC + #0	 	;Load the address of the loop into R2
+;; Loop
+ LDR R0, R1, #0 		; Load value into R0
+ BRz PC + #3   			; Check to see if it is x0000
+ OUT            		; Print it to the screen 
+ ADD R1, R1, #1			; Incremenet the pointer in R1
+ JMP R2	 			; Jump to the start of the loop
+
+
+QUIT
+(Print String: OPTIONSELECTED)
+(Print String: OPTIONSTRING5)
+(Print String: MENUQUITSTRING)
+.END
+BR MENULOOP
+
+
+
+MENUBADINPUT
+(Print String: MENUBADINPUT)
+BR MENULOOP
+
+
+
+
+MENUSTRING1_address .FILL MENUSTRING1
+MENUSTRING2_address .FILL MENUSTRING2
+MENUSTRING3_address .FILL MENUSTRING3
+MENUSTRING4_address .FILL MENUSTRING4
+MENUSTRING5_address .FILL MENUSTRING5
+MENUSTRING6_address .FILL MENUSTRING6
+MENUSTRING7_address .FILL MENUSTRING7
+MENUSTRING1 .STRINGZ -----------------------------
+MENUSTRING2 .STRINGZ ---  Encryter / Decrypter ---
+MENUSTRING3 .STRINGZ .--> Option [1]
+MENUSTRING4 .STRINGZ .--> Option [2]
+MENUSTRING5 .STRINGZ .--> Option [3]
+MENUSTRING6 .STRINGZ .--> Option [4]
+MENUSTRING7 .STRINGZ .--> Option [5]
+
+OPTIONSTRING1_address .FILL OPTIONSTRING1
+OPTIONSTRING2_address .FILL OPTIONSTRING2
+OPTIONSTRING3_address .FILL OPTIONSTRING3
+OPTIONSTRING4_address .FILL OPTIONSTRING4
+OPTIONSTRING5_address .FILL OPTIONSTRING5
+OPTIONSTRING1 .STRINGZ : Encrypt Piglatin
+OPTIONSTRING2 .STRINGZ : Encrypt PlayFair
+OPTIONSTRING3 .STRINGZ : Encrypt Caeser
+OPTIONSTRING4 .STRINGZ : Decrytp Last String
+OPTIONSTRING5 .STRINGZ : Exit Program
+
+OPTIONSELECTED_address .FILL OPTIONSELECTED
+MENUBADINPUT_address .FILL MENUBADINPUT
+MENUQUITSTRING_address .FILL MENUQUITSTRING
+NOENCRYPTEDSTRING_address .FILL NOENCRYPTEDSTRING
+
+OPTIONSELECTED .STRINGZ Selected Option
+MENUBADINPUT .STRINGZ Please Input a Number In Range: 1-5
+MENUQUITSTRING .STRINGZ Goodbye
+NOENCRYPTEDSTRING .STRINGZ No Encrypted String Found
